@@ -1,0 +1,1979 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Starosta.uz — Elektron Davomat va Talabalar Boshqaruv Tizimi</title>
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              200: '#c7d2fe',
+              300: '#a5b4fc',
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              800: '#3730a3',
+              900: '#312e81',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Chart.js for Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  
+  <!-- jsPDF & jsPDF-AutoTable for Real PDF Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <style>
+    /* Custom Scrollbar & Print Styles */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+      body {
+        background: white !important;
+      }
+      .print-full {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased selection:bg-brand-500 selection:text-white">
+
+  <!-- GOOGLE ORQALI KIRISH EKRANI -->
+  <div id="auth-screen" class="fixed inset-0 z-[100] bg-slate-900 flex items-center justify-center p-4">
+    <div class="w-full max-w-sm bg-white rounded-2xl shadow-2xl p-8 text-center">
+      <div class="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-500 text-white font-extrabold text-xl flex items-center justify-center shadow-lg">S</div>
+      <h1 class="mt-4 text-xl font-bold text-slate-900">Starosta.uz</h1>
+      <p class="mt-1 text-sm text-slate-500">Elektron davomat va talabalar boshqaruv tizimi</p>
+
+      <div id="auth-loading" class="mt-8 text-sm text-slate-500">Yuklanmoqda...</div>
+
+      <div id="auth-login" class="hidden mt-8">
+        <a href="/api/auth/google" class="w-full inline-flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-700 shadow-sm transition-colors">
+          <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+            <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.9 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.1 5.3-4.5 7l7.1 5.5c4.2-3.9 6.6-9.6 6.6-17z"/>
+            <path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-2.9-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.4 0 20.1 0 24s.9 7.6 2.6 10.8l7.9-6.1z"/>
+            <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.1-5.5c-2 1.4-4.6 2.3-8.8 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/>
+          </svg>
+          Google orqali kirish
+        </a>
+        <p class="mt-4 text-xs text-slate-400">Davomat ma'lumotlaringiz xavfsiz saqlanadi va faqat sizga ko'rinadi.</p>
+      </div>
+      <p id="auth-message" class="hidden mt-4 text-xs font-medium text-rose-600"></p>
+    </div>
+  </div>
+
+
+  <!-- Toast Notification Container (No alert() used) -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Mobile Sidebar Backdrop -->
+  <div id="sidebar-backdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-30 hidden lg:hidden transition-opacity"></div>
+
+  <div class="min-h-screen flex flex-col lg:flex-row">
+    
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="no-print fixed lg:sticky top-0 left-0 z-40 h-screen w-72 bg-slate-900 text-slate-300 flex flex-col transition-transform duration-300 -translate-x-full lg:translate-x-0 shadow-xl">
+      <!-- Brand Logo -->
+      <div class="h-16 px-6 flex items-center justify-between border-b border-slate-800">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-brand-500/30">
+            <i class="ph-bold ph-graduation-cap text-xl"></i>
+          </div>
+          <div>
+            <span class="font-bold text-white text-lg tracking-tight">Starosta<span class="text-brand-400">.uz</span></span>
+            <p class="text-[11px] text-slate-400 leading-none">Elektron Jurnal SaaS</p>
+          </div>
+        </div>
+        <button onclick="toggleSidebar()" class="lg:hidden text-slate-400 hover:text-white p-1">
+          <i class="ph ph-x text-xl"></i>
+        </button>
+      </div>
+
+      <!-- Current Active Group Badge -->
+      <div class="px-4 py-4">
+        <div class="bg-slate-800/80 border border-slate-700/80 rounded-xl p-3">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-[11px] font-medium uppercase tracking-wider text-slate-400">Faol guruh</span>
+            <span class="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Faol
+            </span>
+          </div>
+          <div id="sidebar-group-name" class="font-bold text-white text-base truncate">KI-2104</div>
+          <div id="sidebar-faculty-name" class="text-xs text-slate-400 truncate mt-0.5">Kompyuter injiniringi</div>
+        </div>
+      </div>
+
+      <!-- Navigation Menu -->
+      <nav class="flex-1 px-3 space-y-1 overflow-y-auto">
+        <button onclick="switchTab('dashboard')" data-tab="dashboard" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all bg-brand-600 text-white shadow-md shadow-brand-600/20">
+          <i class="ph ph-squares-four text-lg"></i>
+          <span>Boshqaruv paneli</span>
+        </button>
+        
+        <button onclick="switchTab('attendance')" data-tab="attendance" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/70 transition-all">
+          <i class="ph ph-check-square-offset text-lg"></i>
+          <span>Kunlik Davomat</span>
+          <span id="nav-badge-today" class="ml-auto text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">Bugun</span>
+        </button>
+
+        <button onclick="switchTab('students')" data-tab="students" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/70 transition-all">
+          <i class="ph ph-users-three text-lg"></i>
+          <span>Guruh va Talabalar</span>
+          <span id="nav-student-count" class="ml-auto text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">12</span>
+        </button>
+
+        <button onclick="switchTab('reports')" data-tab="reports" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/70 transition-all">
+          <i class="ph ph-file-pdf text-lg"></i>
+          <span>Hisobotlar & PDF</span>
+        </button>
+
+        <button onclick="switchTab('settings')" data-tab="settings" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/70 transition-all">
+          <i class="ph ph-gear text-lg"></i>
+          <span>Guruh Sozlamalari</span>
+        </button>
+      </nav>
+
+      <!-- Quick PDF Action in Sidebar -->
+      <div class="p-4 border-t border-slate-800">
+        <button onclick="exportCurrentDayPDF()" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-medium text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition-all active:scale-[0.98]">
+          <i class="ph-bold ph-download-simple text-base"></i>
+          <span>Bugungi PDF yuklash</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <div class="flex-1 flex flex-col min-w-0">
+      
+      <!-- TOPBAR -->
+      <header class="no-print sticky top-0 z-20 h-16 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <button onclick="toggleSidebar()" class="lg:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100">
+            <i class="ph ph-list text-2xl"></i>
+          </button>
+          
+          <!-- Group Switcher Dropdown -->
+          <div class="flex items-center gap-2">
+            <div class="relative">
+              <select id="topbar-group-select" onchange="handleGroupChange(this.value)" class="appearance-none bg-slate-100 hover:bg-slate-200/70 text-slate-800 font-semibold text-sm rounded-xl pl-3.5 pr-9 py-2 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all cursor-pointer">
+                <!-- Populated dynamically -->
+              </select>
+              <i class="ph ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none text-sm"></i>
+            </div>
+            <button onclick="openNewGroupModal()" title="Yangi guruh yaratish" class="p-2 rounded-xl bg-brand-50 text-brand-600 hover:bg-brand-100 border border-brand-200/60 transition-colors">
+              <i class="ph-bold ph-plus text-base"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Global Search Bar (Hidden on very small screens) -->
+        <div class="hidden md:flex items-center flex-1 max-w-md mx-4">
+          <div class="relative w-full">
+            <i class="ph ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base"></i>
+            <input type="text" id="global-search" oninput="handleGlobalSearch(this.value)" placeholder="Talaba ismi yoki ID bo'yicha qidirish..." class="w-full bg-slate-100/80 border border-slate-200/80 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-700 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
+          </div>
+        </div>
+
+        <!-- Right Topbar Info: Date & Starosta Profile -->
+        <div class="flex items-center gap-3 sm:gap-4">
+          <div class="hidden sm:flex items-center gap-2 text-xs font-medium text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200/70">
+            <i class="ph ph-calendar-blank text-brand-600 text-base"></i>
+            <span id="topbar-current-date">13-noyabr, 2026</span>
+          </div>
+
+          <button type="button" onclick="logout()" title="Tizimdan chiqish" class="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-slate-200/70 transition-colors">
+            <i class="ph ph-sign-out text-base"></i>
+          </button>
+
+          <div onclick="switchTab('settings')" class="flex items-center gap-2.5 cursor-pointer pl-2 py-1 pr-1 rounded-xl hover:bg-slate-100 transition-colors">
+            <div class="text-right hidden sm:block">
+              <div id="topbar-starosta-name" class="text-sm font-semibold text-slate-800 leading-tight">Azizbek Karimov</div>
+              <div class="text-[11px] font-medium text-brand-600">Guruh sardori</div>
+            </div>
+            <div id="topbar-avatar" class="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 text-white font-bold text-sm flex items-center justify-center shadow-sm">
+              AK
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- MAIN DYNAMIC VIEWPORT -->
+      <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6">
+        
+        <!-- ============================================================== -->
+        <!-- TAB 1: DASHBOARD (BOSHQARUV PANELI) -->
+        <!-- ============================================================== -->
+        <section id="view-dashboard" class="tab-view space-y-6">
+          <!-- Welcome Header -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
+            <div>
+              <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-brand-50 text-brand-700 text-xs font-semibold mb-2">
+                <i class="ph-fill ph-sparkle"></i>
+                <span id="dash-university-label">Toshkent Axborot Texnologiyalari Universiteti</span>
+              </div>
+              <h1 class="text-xl sm:text-2xl font-bold text-slate-900">
+                Xush kelibsiz, <span id="dash-starosta-greeting" class="text-brand-600">Azizbek</span>! 👋
+              </h1>
+              <p class="text-sm text-slate-500 mt-1">
+                <strong id="dash-group-title" class="text-slate-700">KI-2104</strong> guruhining <span id="dash-date-subtitle" class="font-medium text-slate-700">bugungi</span> davomat ko'rsatkichlari va tahlili.
+              </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2.5">
+              <button onclick="switchTab('attendance')" class="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold flex items-center gap-2 shadow-sm shadow-brand-600/20 transition-all">
+                <i class="ph-bold ph-check-circle text-base"></i>
+                <span>Davomat olish</span>
+              </button>
+              <button onclick="exportCurrentDayPDF()" class="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-sm font-semibold flex items-center gap-2 transition-all">
+                <i class="ph-bold ph-file-pdf text-rose-500 text-base"></i>
+                <span>PDF Hisobot</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 4 KPI Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
+            <!-- Card 1: Total Students -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition-shadow">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-sm font-medium text-slate-500">Jami talabalar</span>
+                <div class="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center">
+                  <i class="ph-duotone ph-users-three text-xl"></i>
+                </div>
+              </div>
+              <div class="flex items-baseline gap-2">
+                <span id="kpi-total" class="text-3xl font-extrabold text-slate-900">12</span>
+                <span class="text-xs font-medium text-slate-400">nafar talaba</span>
+              </div>
+              <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                <span class="text-slate-500">O'rtacha davomat:</span>
+                <span id="kpi-overall-rate" class="font-bold text-brand-600">91%</span>
+              </div>
+            </div>
+
+            <!-- Card 2: Present Today -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition-shadow">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-sm font-medium text-slate-500">Bugun kelganlar</span>
+                <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <i class="ph-duotone ph-user-check text-xl"></i>
+                </div>
+              </div>
+              <div class="flex items-baseline gap-2">
+                <span id="kpi-present" class="text-3xl font-extrabold text-emerald-600">10</span>
+                <span id="kpi-present-pct" class="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">83%</span>
+              </div>
+              <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                <span class="text-slate-500">Dars juftligi:</span>
+                <span id="kpi-lesson-label" class="font-medium text-slate-700 truncate max-w-[130px]">1-juftlik</span>
+              </div>
+            </div>
+
+            <!-- Card 3: Unexcused Absent -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition-shadow">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-sm font-medium text-slate-500">Sababsiz kelmagan</span>
+                <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                  <i class="ph-duotone ph-user-minus text-xl"></i>
+                </div>
+              </div>
+              <div class="flex items-baseline gap-2">
+                <span id="kpi-absent" class="text-3xl font-extrabold text-rose-600">1</span>
+                <span id="kpi-absent-pct" class="text-xs font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700">8%</span>
+              </div>
+              <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                <span class="text-slate-500">Holat:</span>
+                <span id="kpi-absent-note" class="font-medium text-rose-600">Nazorat talab etiladi</span>
+              </div>
+            </div>
+
+            <!-- Card 4: Excused / Late -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition-shadow">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-sm font-medium text-slate-500">Sababli / Kechikkan</span>
+                <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <i class="ph-duotone ph-clock-countdown text-xl"></i>
+                </div>
+              </div>
+              <div class="flex items-baseline gap-2">
+                <span id="kpi-excused-late" class="text-3xl font-extrabold text-amber-600">1</span>
+                <span class="text-xs font-medium text-slate-400" id="kpi-excused-late-detail">(1 sababli, 0 kechikdi)</span>
+              </div>
+              <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                <span class="text-slate-500">Hujjat asosida:</span>
+                <span class="font-medium text-slate-700">Qayd etilgan</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts Section -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Weekly Attendance Bar/Line Chart -->
+            <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5">
+                <div>
+                  <h2 class="text-base font-bold text-slate-900">Haftalik davomat dinamikasi</h2>
+                  <p class="text-xs text-slate-500">So'nggi 6 o'quv kuni bo'yicha talabalar qatnovi (%)</p>
+                </div>
+                <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-600 bg-brand-50 px-3 py-1 rounded-full self-start">
+                  <i class="ph-fill ph-trend-up"></i> Real-time tahlil
+                </span>
+              </div>
+              <div class="relative h-64 w-full">
+                <canvas id="weeklyChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Daily Distribution Doughnut Chart -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col">
+              <div class="mb-4">
+                <h2 class="text-base font-bold text-slate-900">Bugungi holat taqsimoti</h2>
+                <p class="text-xs text-slate-500">Statuslar bo'yicha ulushlar</p>
+              </div>
+              <div class="relative h-52 w-full flex items-center justify-center my-auto">
+                <canvas id="statusDoughnutChart"></canvas>
+              </div>
+              <div id="doughnut-legend" class="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-slate-100 text-xs">
+                <!-- Legend populated by JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Section: At-Risk Students & Recent Activity -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- At-Risk Students List -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
+              <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+                    <i class="ph-bold ph-warning-circle text-lg"></i>
+                  </div>
+                  <div>
+                    <h2 class="text-base font-bold text-slate-900">Xavf guruhidagi talabalar</h2>
+                    <p class="text-xs text-slate-500">Eng ko'p sababsiz dars qoldirganlar</p>
+                  </div>
+                </div>
+                <button onclick="switchTab('students')" class="text-xs font-semibold text-brand-600 hover:text-brand-700">Barchasi →</button>
+              </div>
+              <div id="at-risk-list" class="space-y-3">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+
+            <!-- Today's Absent/Late Quick Summary -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
+              <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                    <i class="ph-bold ph-notepad text-lg"></i>
+                  </div>
+                  <div>
+                    <h2 class="text-base font-bold text-slate-900">Bugungi qaydlar va izohlar</h2>
+                    <p class="text-xs text-slate-500">Kelmagan yoki kechikkan talabalar holati</p>
+                  </div>
+                </div>
+                <button onclick="switchTab('attendance')" class="text-xs font-semibold text-brand-600 hover:text-brand-700">Tahrirlash →</button>
+              </div>
+              <div id="today-notes-list" class="space-y-3">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- TAB 2: KUNLIK DAVOMAT (INTERACTIVE ATTENDANCE TRACKER) -->
+        <!-- ============================================================== -->
+        <section id="view-attendance" class="tab-view hidden space-y-6">
+          <!-- Top Controls Card -->
+          <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div>
+                <h1 class="text-xl font-bold text-slate-900">Kunlik Elektron Davomat</h1>
+                <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Sana va dars juftligini tanlang, talabalar holatini belgilang</p>
+              </div>
+              
+              <div class="flex flex-wrap items-center gap-2.5">
+                <button onclick="markAllPresent()" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold flex items-center gap-2 shadow-sm shadow-emerald-600/20 transition-all active:scale-[0.98]">
+                  <i class="ph-bold ph-checks text-base"></i>
+                  <span>Barchasi keldi</span>
+                </button>
+                <button onclick="exportCurrentDayPDF()" class="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs sm:text-sm font-semibold flex items-center gap-2 shadow-sm shadow-brand-600/20 transition-all active:scale-[0.98]">
+                  <i class="ph-bold ph-file-pdf text-base"></i>
+                  <span>PDF Yuklab olish</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Date Picker & Lesson Subject Input -->
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 pt-3 border-t border-slate-100">
+              <div class="md:col-span-4">
+                <label class="block text-xs font-semibold text-slate-600 mb-1.5">Sana tanlang</label>
+                <div class="relative">
+                  <input type="date" id="attendance-date-picker" onchange="handleAttendanceDateChange(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                </div>
+              </div>
+
+              <div class="md:col-span-5">
+                <label class="block text-xs font-semibold text-slate-600 mb-1.5">Dars juftligi va Fan nomi</label>
+                <div class="relative">
+                  <input type="text" id="attendance-lesson-input" oninput="handleLessonNameChange(this.value)" list="lesson-suggestions" placeholder="Masalan: 1-juftlik: Dasturlash asoslari" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                  <datalist id="lesson-suggestions">
+                    <option value="1-juftlik: Dasturlash asoslari">
+                    <option value="2-juftlik: Ma'lumotlar bazasi">
+                    <option value="3-juftlik: Algoritmlar va ma'lumotlar tuzilmasi">
+                    <option value="4-juftlik: Oliy matematika">
+                    <option value="1-juftlik: Veb dasturlash texnologiyalari">
+                  </datalist>
+                </div>
+              </div>
+
+              <div class="md:col-span-3 flex flex-col justify-end">
+                <div class="bg-slate-50 border border-slate-200/80 rounded-xl px-3.5 py-2 flex items-center justify-between">
+                  <span class="text-xs text-slate-500">Davomat foizi:</span>
+                  <span id="att-live-percentage" class="text-base font-extrabold text-brand-600">100%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live Attendance Counter Pills -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="bg-emerald-50/80 border border-emerald-200/80 rounded-xl px-4 py-3 flex items-center justify-between">
+              <span class="text-xs font-semibold text-emerald-800">Keldi</span>
+              <span id="att-count-present" class="text-lg font-extrabold text-emerald-700">0</span>
+            </div>
+            <div class="bg-amber-50/80 border border-amber-200/80 rounded-xl px-4 py-3 flex items-center justify-between">
+              <span class="text-xs font-semibold text-amber-800">Sababli</span>
+              <span id="att-count-excused" class="text-lg font-extrabold text-amber-700">0</span>
+            </div>
+            <div class="bg-rose-50/80 border border-rose-200/80 rounded-xl px-4 py-3 flex items-center justify-between">
+              <span class="text-xs font-semibold text-rose-800">Sababsiz</span>
+              <span id="att-count-absent" class="text-lg font-extrabold text-rose-700">0</span>
+            </div>
+            <div class="bg-sky-50/80 border border-sky-200/80 rounded-xl px-4 py-3 flex items-center justify-between">
+              <span class="text-xs font-semibold text-sky-800">Kechikdi</span>
+              <span id="att-count-late" class="text-lg font-extrabold text-sky-700">0</span>
+            </div>
+          </div>
+
+          <!-- Attendance Table -->
+          <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-50/90 border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    <th class="py-3.5 px-4 w-12 text-center">#</th>
+                    <th class="py-3.5 px-4">Talaba F.I.Sh. va ID</th>
+                    <th class="py-3.5 px-4">Davomat Holati</th>
+                    <th class="py-3.5 px-4 min-w-[200px]">Izoh / Sabab</th>
+                  </tr>
+                </thead>
+                <tbody id="attendance-table-body" class="divide-y divide-slate-100 text-sm">
+                  <!-- Rows populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- TAB 3: GURUH VA TALABALAR (STUDENTS MANAGEMENT) -->
+        <!-- ============================================================== -->
+        <section id="view-students" class="tab-view hidden space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
+            <div>
+              <h1 class="text-xl font-bold text-slate-900">Guruh Talabalari Ro'yxati</h1>
+              <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Talabalarni qo'shish, ma'lumotlarini tahrirlash va umumiy davomat ko'rsatkichlari</p>
+            </div>
+            <button onclick="openStudentModal()" class="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold flex items-center gap-2 shadow-sm shadow-brand-600/20 transition-all self-start sm:self-auto">
+              <i class="ph-bold ph-user-plus text-base"></i>
+              <span>Yangi talaba qo'shish</span>
+            </button>
+          </div>
+
+          <!-- Filter & Search Bar -->
+          <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="relative w-full sm:w-80">
+              <i class="ph ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+              <input type="text" id="student-tab-search" oninput="renderStudentsTable()" placeholder="Ism, ID yoki telefon raqam..." class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            </div>
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <select id="student-sort-select" onchange="renderStudentsTable()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                <option value="name">Alifbo bo'yicha (A-Z)</option>
+                <option value="rate-desc">Davomat % (Yuqoridan pastga)</option>
+                <option value="rate-asc">Davomat % (Pastdan yuqoriga)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Students Table -->
+          <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-50/90 border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    <th class="py-3.5 px-4 w-12 text-center">#</th>
+                    <th class="py-3.5 px-4">F.I.Sh.</th>
+                    <th class="py-3.5 px-4">Talaba ID</th>
+                    <th class="py-3.5 px-4">Telefon raqami</th>
+                    <th class="py-3.5 px-4">Umumiy Davomat</th>
+                    <th class="py-3.5 px-4 text-right">Amallar</th>
+                  </tr>
+                </thead>
+                <tbody id="students-table-body" class="divide-y divide-slate-100 text-sm">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- TAB 4: HISOBOTLAR & PDF EKSPORT -->
+        <!-- ============================================================== -->
+        <section id="view-reports" class="tab-view hidden space-y-6">
+          <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 class="text-xl font-bold text-slate-900">Rasmiy Davomat Hisoboti va PDF Eksport</h1>
+              <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Tanlangan sana bo'yicha dekanat uchun tayyor rasmiy hujjatni yuklab oling yoki chop eting</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+              <input type="date" id="report-date-picker" onchange="handleReportDateChange(this.value)" class="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500" />
+              <button onclick="exportReportPDF()" class="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold flex items-center gap-2 shadow-sm shadow-rose-600/20 transition-all">
+                <i class="ph-bold ph-file-pdf text-base"></i>
+                <span>PDF Yuklab olish</span>
+              </button>
+              <button onclick="window.print()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold flex items-center gap-2 transition-all">
+                <i class="ph-bold ph-printer text-base"></i>
+                <span>Chop etish</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Official Document Preview Card -->
+          <div id="printable-report-area" class="print-full bg-white p-6 sm:p-10 rounded-2xl border border-slate-200/80 shadow-xs max-w-4xl mx-auto">
+            <!-- Document Header -->
+            <div class="text-center border-b-2 border-slate-800 pb-5 mb-6">
+              <p id="rep-university" class="text-xs font-bold uppercase tracking-widest text-slate-500">O'ZBEKISTON RESPUBLIKASI OLIY TA'LIM MUASSASASI</p>
+              <h2 class="text-lg sm:text-xl font-extrabold text-slate-900 mt-1 uppercase">KUNLIK ELEKTRON DAVOMAT QAYDNOMASI</h2>
+              <div class="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 mt-3 text-xs sm:text-sm text-slate-700">
+                <span><strong>Guruh:</strong> <span id="rep-group-name">KI-2104</span></span>
+                <span><strong>Yo'nalish:</strong> <span id="rep-faculty">Kompyuter injiniringi</span></span>
+                <span><strong>Sana:</strong> <span id="rep-date">2026-11-13</span></span>
+              </div>
+              <div class="mt-1.5 text-xs sm:text-sm text-slate-700">
+                <strong>Dars / Fan:</strong> <span id="rep-lesson">1-juftlik: Dasturlash asoslari</span>
+              </div>
+            </div>
+
+            <!-- Summary Strip -->
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-6 text-center">
+              <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                <div class="text-[11px] text-slate-500 font-medium">Jami talaba</div>
+                <div id="rep-stat-total" class="text-base font-bold text-slate-900">12</div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200">
+                <div class="text-[11px] text-emerald-700 font-medium">Keldi</div>
+                <div id="rep-stat-present" class="text-base font-bold text-emerald-700">10</div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200">
+                <div class="text-[11px] text-amber-700 font-medium">Sababli</div>
+                <div id="rep-stat-excused" class="text-base font-bold text-amber-700">1</div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-rose-50/70 border border-rose-200">
+                <div class="text-[11px] text-rose-700 font-medium">Sababsiz</div>
+                <div id="rep-stat-absent" class="text-base font-bold text-rose-700">1</div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-sky-50/70 border border-sky-200 col-span-2 sm:col-span-1">
+                <div class="text-[11px] text-sky-700 font-medium">Kechikdi</div>
+                <div id="rep-stat-late" class="text-base font-bold text-sky-700">0</div>
+              </div>
+            </div>
+
+            <!-- Official Table Preview -->
+            <div class="overflow-x-auto border border-slate-300 rounded-xl">
+              <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                <thead>
+                  <tr class="bg-slate-100 border-b border-slate-300 font-bold text-slate-800">
+                    <th class="py-2.5 px-3 border-r border-slate-300 w-10 text-center">№</th>
+                    <th class="py-2.5 px-3 border-r border-slate-300">Talabaning F.I.Sh.</th>
+                    <th class="py-2.5 px-3 border-r border-slate-300">Talaba ID</th>
+                    <th class="py-2.5 px-3 border-r border-slate-300">Holati</th>
+                    <th class="py-2.5 px-3">Izoh</th>
+                  </tr>
+                </thead>
+                <tbody id="report-preview-tbody" class="divide-y divide-slate-200">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Signature Footer -->
+            <div class="mt-8 pt-6 border-t border-slate-200 flex flex-col sm:flex-row justify-between gap-6 text-xs sm:text-sm text-slate-700">
+              <div>
+                <p class="font-semibold">Guruh sardori (Starosta):</p>
+                <p id="rep-starosta-name" class="mt-1 font-bold text-slate-900">Azizbek Karimov</p>
+              </div>
+              <div class="sm:text-right">
+                <p class="font-semibold">Imzo: ______________________</p>
+                <p class="text-xs text-slate-400 mt-1">Starosta.uz elektron tizimi orqali shakllantirildi</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- TAB 5: GURUH SOZLAMALARI (SETTINGS) -->
+        <!-- ============================================================== -->
+        <section id="view-settings" class="tab-view hidden space-y-6">
+          <div class="max-w-2xl bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-xs space-y-6">
+            <div>
+              <h1 class="text-xl font-bold text-slate-900">Guruh va Starosta Sozlamalari</h1>
+              <p class="text-xs sm:text-sm text-slate-500 mt-1">Joriy guruh ma'lumotlarini tahrirlash yoki tizim ma'lumotlarini boshqarish</p>
+            </div>
+
+            <form onsubmit="saveGroupSettings(event)" class="space-y-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1.5">Oliy ta'lim muassasasi nomi</label>
+                <input type="text" id="set-university" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500" />
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-1.5">Guruh nomi (raqami)</label>
+                  <input type="text" id="set-group-name" required placeholder="Masalan: KI-2104" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-1.5">Fakultet / Yo'nalish</label>
+                  <input type="text" id="set-faculty" required placeholder="Masalan: Kompyuter injiniringi" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1.5">Starosta (Guruh sardori) F.I.Sh.</label>
+                <input type="text" id="set-starosta" required placeholder="Masalan: Azizbek Karimov" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500" />
+              </div>
+
+              <div class="pt-2 flex flex-wrap items-center justify-between gap-3">
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold shadow-sm shadow-brand-600/20 transition-all">
+                  O'zgarishlarni saqlash
+                </button>
+
+                <button type="button" onclick="logout()" class="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold border border-rose-200/70 transition-all">
+                  Tizimdan chiqish
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- MODAL 1: ADD / EDIT STUDENT -->
+  <!-- ====================================================================== -->
+  <div id="student-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-fade-in">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 id="student-modal-title" class="text-lg font-bold text-slate-900">Yangi talaba qo'shish</h3>
+        <button onclick="closeStudentModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i class="ph ph-x text-xl"></i>
+        </button>
+      </div>
+      <form onsubmit="handleStudentFormSubmit(event)" class="mt-4 space-y-4">
+        <input type="hidden" id="modal-student-id" />
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Talabaning F.I.Sh. *</label>
+          <input type="text" id="modal-student-name" required placeholder="Masalan: Abdullayev Sardor Rustamovich" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Talaba ID raqami *</label>
+          <input type="text" id="modal-student-code" required placeholder="Masalan: ID-210413" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Telefon raqami *</label>
+          <input type="text" id="modal-student-phone" required placeholder="+998 90 123 45 67" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500" />
+        </div>
+        <div class="pt-3 flex items-center justify-end gap-2.5">
+          <button type="button" onclick="closeStudentModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium">Bekor qilish</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold shadow-sm">Saqlash</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- MODAL 2: CREATE NEW GROUP -->
+  <!-- ====================================================================== -->
+  <div id="new-group-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 class="text-lg font-bold text-slate-900">Yangi guruh yaratish</h3>
+        <button onclick="closeNewGroupModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i class="ph ph-x text-xl"></i>
+        </button>
+      </div>
+      <form onsubmit="handleCreateGroup(event)" class="mt-4 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Guruh nomi *</label>
+          <input type="text" id="new-grp-name" required placeholder="Masalan: DI-2201" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Fakultet / Yo'nalish *</label>
+          <input type="text" id="new-grp-faculty" required placeholder="Masalan: Dasturiy injiniring" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Starosta F.I.Sh. *</label>
+          <input type="text" id="new-grp-starosta" required placeholder="Masalan: Jasur Tursunov" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500" />
+        </div>
+        <div class="flex items-center gap-2 pt-1">
+          <input type="checkbox" id="new-grp-sample" checked class="w-4 h-4 rounded text-brand-600 focus:ring-brand-500" />
+          <label for="new-grp-sample" class="text-xs text-slate-600">Namunaviy 6 ta talaba bilan boshlash</label>
+        </div>
+        <div class="pt-3 flex items-center justify-end gap-2.5">
+          <button type="button" onclick="closeNewGroupModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium">Bekor qilish</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold shadow-sm">Guruh yaratish</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- MODAL 3: CUSTOM CONFIRMATION DIALOG (Replaces window.confirm) -->
+  <!-- ====================================================================== -->
+  <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">
+      <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mb-4">
+        <i class="ph-bold ph-warning text-2xl"></i>
+      </div>
+      <h3 id="confirm-title" class="text-lg font-bold text-slate-900">Tasdiqlash</h3>
+      <p id="confirm-message" class="text-sm text-slate-500 mt-1.5">Haqiqatan ham ushbu amalni bajarishni xohlaysizmi?</p>
+      <div class="mt-6 flex items-center justify-end gap-2.5">
+        <button onclick="closeConfirmModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium">Yo'q, bekor qilish</button>
+        <button id="confirm-yes-btn" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold">Ha, tasdiqlayman</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- APPLICATION LOGIC -->
+  <!-- ====================================================================== -->
+  <script>
+    const UI_KEY = 'starosta_uz_ui_v1'; // faqat interfeys tanlovi (faol guruh); asosiy ma'lumot serverda
+
+    // Helper: Get YYYY-MM-DD for offset days from today
+    function getDateString(offsetDays = 0) {
+      const d = new Date();
+      d.setDate(d.getDate() + offsetDays);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    // Format Uzbek Date nicely
+    function formatUzbekDate(dateStr) {
+      if (!dateStr) return '';
+      const months = [
+        'yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun',
+        'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr'
+      ];
+      const [y, m, d] = dateStr.split('-');
+      return `${parseInt(d, 10)}-${months[parseInt(m, 10) - 1]}, ${y}`;
+    }
+
+    // Initial Default Seed Data (12 Uzbek Students + 6 Days of Realistic Attendance)
+
+    const _today = getDateString(0);
+    let appState = { activeGroupId: null, selectedDate: _today, reportDate: _today, groups: [] };
+    let currentUser = null;
+    let weeklyChartInstance = null;
+    let doughnutChartInstance = null;
+
+    // ========================================================================
+    // API QATLAMI (fetch) VA AVTORIZATSIYA
+    // ========================================================================
+    async function api(path, options = {}) {
+      const opts = { credentials: 'same-origin', ...options, headers: { ...(options.headers || {}) } };
+      if (opts.body !== undefined && typeof opts.body !== 'string') {
+        opts.headers['Content-Type'] = 'application/json';
+        opts.body = JSON.stringify(opts.body);
+      }
+      const res = await fetch(path, opts);
+      let data = null;
+      try { data = await res.json(); } catch (_) { /* bo'sh javob */ }
+      if (res.status === 401) {
+        showLoginScreen();
+        throw new Error('Sessiya tugagan. Qayta kiring.');
+      }
+      if (!res.ok) throw new Error((data && data.error) || `Server xatoligi (${res.status})`);
+      return data;
+    }
+
+    function showAuthPanel(which, message) {
+      document.getElementById('auth-screen').classList.remove('hidden');
+      document.getElementById('auth-loading').classList.toggle('hidden', which !== 'loading');
+      document.getElementById('auth-login').classList.toggle('hidden', which !== 'login');
+      const msg = document.getElementById('auth-message');
+      msg.textContent = message || '';
+      msg.classList.toggle('hidden', !message);
+    }
+    function showLoginScreen(message) {
+      if (!message && new URLSearchParams(location.search).get('auth') === 'failed') {
+        message = "Google orqali kirish muvaffaqiyatsiz tugadi. Qayta urinib ko'ring.";
+      }
+      showAuthPanel('login', message);
+    }
+    function hideAuthScreen() {
+      document.getElementById('auth-screen').classList.add('hidden');
+      if (location.search) history.replaceState(null, '', location.pathname);
+    }
+
+    async function logout() {
+      try { await api('/api/auth/logout', { method: 'POST' }); } catch (_) { /* baribir chiqamiz */ }
+      location.href = '/';
+    }
+
+    // Serverdan barcha guruhlar, talabalar va davomat tarixini yuklab, avvalgi appState shaklida yig'adi
+    async function loadAllData() {
+      const { groups } = await api('/api/groups');
+      appState.groups = await Promise.all(groups.map(async (g) => {
+        const [st, at] = await Promise.all([
+          api(`/api/groups/${g.id}/students`),
+          api(`/api/attendance?group_id=${g.id}`)
+        ]);
+        return {
+          id: g.id, name: g.name, faculty: g.faculty, university: g.university, starosta: g.starosta,
+          students: st.students,
+          attendance: at.attendance
+        };
+      }));
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem(UI_KEY) || 'null'); } catch (_) { /* e'tiborsiz */ }
+      const found = appState.groups.find(g => g.id === saved?.activeGroupId);
+      appState.activeGroupId = (found || appState.groups[0] || {}).id || null;
+    }
+
+    // Davomatni serverga yuborish (kechiktirilgan: tez-tez bosilganda bitta so'rov ketadi)
+    const pendingAttendance = new Map();
+    function queueAttendanceSave(group, dateStr) {
+      const key = group.id + '|' + dateStr;
+      const prev = pendingAttendance.get(key);
+      if (prev) clearTimeout(prev.timer);
+      const timer = setTimeout(() => flushAttendance(group.id, dateStr), 500);
+      pendingAttendance.set(key, { timer, groupId: group.id, dateStr });
+    }
+    async function flushAttendance(groupId, dateStr, keepalive = false) {
+      pendingAttendance.delete(groupId + '|' + dateStr);
+      const group = appState.groups.find(g => g.id === groupId);
+      const day = group && group.attendance[dateStr];
+      if (!day) return;
+      const records = Object.entries(day.records).map(([student_id, r]) => ({
+        student_id, status: r.status, note: r.note || ''
+      }));
+      try {
+        await api('/api/attendance', {
+          method: 'POST', keepalive,
+          body: { group_id: groupId, date: dateStr, lesson: day.lesson || '', records }
+        });
+      } catch (e) {
+        showToast('Davomatni saqlashda xatolik: ' + e.message, 'danger');
+      }
+    }
+    // Sahifa yopilayotganda kutilayotgan o'zgarishlar yo'qolmasligi uchun
+    window.addEventListener('pagehide', () => {
+      [...pendingAttendance.values()].forEach(p => {
+        clearTimeout(p.timer);
+        flushAttendance(p.groupId, p.dateStr, true);
+      });
+    });
+
+
+    // Endi ma'lumotlar serverda. localStorage'da faqat "oxirgi tanlangan guruh" saqlanadi.
+    function saveState() {
+      try {
+        localStorage.setItem(UI_KEY, JSON.stringify({ activeGroupId: appState.activeGroupId }));
+      } catch (e) { /* e'tiborsiz */ }
+    }
+
+    function getActiveGroup() {
+      return appState.groups.find(g => g.id === appState.activeGroupId) || appState.groups[0];
+    }
+
+    // Ensure a day's attendance entry exists in the active group
+    function ensureDayAttendance(group, dateStr) {
+      if (!group.attendance[dateStr]) {
+        const records = {};
+        group.students.forEach(s => {
+          records[s.id] = { status: 'present', note: '' };
+        });
+        group.attendance[dateStr] = {
+          lesson: '1-juftlik: Asosiy fan',
+          records
+        };
+      } else {
+        // Ensure newly added students also exist in this day's record
+        group.students.forEach(s => {
+          if (!group.attendance[dateStr].records[s.id]) {
+            group.attendance[dateStr].records[s.id] = { status: 'present', note: '' };
+          }
+        });
+      }
+      return group.attendance[dateStr];
+    }
+
+    // Calculate student's overall attendance statistics across all recorded days
+    function getStudentStats(group, studentId) {
+      const dates = Object.keys(group.attendance);
+      if (dates.length === 0) return { rate: 100, absentCount: 0, excusedCount: 0, lateCount: 0, presentCount: 0, totalDays: 0 };
+
+      let presentCount = 0;
+      let lateCount = 0;
+      let excusedCount = 0;
+      let absentCount = 0;
+      let totalDays = 0;
+
+      dates.forEach(d => {
+        const rec = group.attendance[d]?.records?.[studentId];
+        if (rec) {
+          totalDays++;
+          if (rec.status === 'present') presentCount++;
+          else if (rec.status === 'late') lateCount++;
+          else if (rec.status === 'excused') excusedCount++;
+          else if (rec.status === 'absent') absentCount++;
+        }
+      });
+
+      if (totalDays === 0) return { rate: 100, absentCount: 0, excusedCount: 0, lateCount: 0, presentCount: 0, totalDays: 0 };
+      // Present + Late count as attended; Excused is neutral or partial, here we calculate standard attendance rate
+      const attended = presentCount + lateCount;
+      const rate = Math.round((attended / totalDays) * 100);
+      return { rate, absentCount, excusedCount, lateCount, presentCount, totalDays };
+    }
+
+    // Toast Notification Helper
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const styles = {
+        success: 'bg-slate-900 text-white border-emerald-500/50',
+        info: 'bg-slate-900 text-white border-brand-500/50',
+        warning: 'bg-slate-900 text-white border-amber-500/50',
+        danger: 'bg-rose-600 text-white border-rose-400'
+      };
+      const icons = {
+        success: '<i class="ph-fill ph-check-circle text-emerald-400 text-lg"></i>',
+        info: '<i class="ph-fill ph-info text-brand-400 text-lg"></i>',
+        warning: '<i class="ph-fill ph-warning text-amber-400 text-lg"></i>',
+        danger: '<i class="ph-fill ph-warning-circle text-white text-lg"></i>'
+      };
+
+      toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border shadow-xl text-sm font-medium transition-all duration-300 translate-y-2 opacity-0 ${styles[type] || styles.success}`;
+      toast.innerHTML = `${icons[type] || icons.success}<span>${message}</span>`;
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    // Navigation & Sidebar Toggle
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const backdrop = document.getElementById('sidebar-backdrop');
+      const isHidden = sidebar.classList.contains('-translate-x-full');
+      if (isHidden) {
+        sidebar.classList.remove('-translate-x-full');
+        backdrop.classList.remove('hidden');
+      } else {
+        sidebar.classList.add('-translate-x-full');
+        backdrop.classList.add('hidden');
+      }
+    }
+
+    function switchTab(tabName) {
+      // Update active nav buttons
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        if (btn.dataset.tab === tabName) {
+          btn.className = 'nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all bg-brand-600 text-white shadow-md shadow-brand-600/20';
+        } else {
+          btn.className = 'nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/70 transition-all';
+        }
+      });
+
+      // Toggle views
+      document.querySelectorAll('.tab-view').forEach(sec => sec.classList.add('hidden'));
+      const target = document.getElementById(`view-${tabName}`);
+      if (target) target.classList.remove('hidden');
+
+      // Close mobile sidebar if open
+      const sidebar = document.getElementById('sidebar');
+      if (!sidebar.classList.contains('-translate-x-full') && window.innerWidth < 1024) {
+        toggleSidebar();
+      }
+
+      // Refresh view-specific components
+      if (tabName === 'dashboard') renderDashboard();
+      if (tabName === 'attendance') renderAttendanceView();
+      if (tabName === 'students') renderStudentsTable();
+      if (tabName === 'reports') renderReportPreview();
+      if (tabName === 'settings') populateSettingsForm();
+    }
+
+    // Global Header & Group Info Synchronization
+    function syncHeaderAndSidebar() {
+      const group = getActiveGroup();
+      const todayStr = getDateString(0);
+
+      document.getElementById('sidebar-group-name').textContent = group.name;
+      document.getElementById('sidebar-faculty-name').textContent = group.faculty;
+      document.getElementById('nav-student-count').textContent = group.students.length;
+      document.getElementById('topbar-current-date').textContent = formatUzbekDate(todayStr);
+      document.getElementById('topbar-starosta-name').textContent = group.starosta;
+
+      // Initials Avatar
+      const initials = group.starosta
+        .split(' ')
+        .slice(0, 2)
+        .map(w => w[0]?.toUpperCase() || '')
+        .join('') || 'ST';
+      document.getElementById('topbar-avatar').textContent = initials;
+
+      // Group Select Dropdown
+      const select = document.getElementById('topbar-group-select');
+      select.innerHTML = appState.groups.map(g => 
+        `<option value="${g.id}" ${g.id === group.id ? 'selected' : ''}>${g.name} (${g.students.length})</option>`
+      ).join('');
+    }
+
+    function handleGroupChange(newGroupId) {
+      appState.activeGroupId = newGroupId;
+      saveState();
+      refreshAllViews();
+      showToast(`"${getActiveGroup().name}" guruhiga o'tildi`, 'info');
+    }
+
+    function handleGlobalSearch(query) {
+      const q = query.trim();
+      if (!q) return;
+      document.getElementById('student-tab-search').value = q;
+      switchTab('students');
+      renderStudentsTable();
+    }
+
+    // ========================================================================
+    // RENDER DASHBOARD (KPIs, Charts, At-Risk Students)
+    // ========================================================================
+    function renderDashboard() {
+      const group = getActiveGroup();
+      const activeDate = appState.selectedDate || getDateString(0);
+      const dayData = ensureDayAttendance(group, activeDate);
+      saveState();
+
+      // Header texts
+      document.getElementById('dash-university-label').textContent = group.university || 'Oliy Ta\'lim Muassasasi';
+      document.getElementById('dash-starosta-greeting').textContent = group.starosta.split(' ')[0] || group.starosta;
+      document.getElementById('dash-group-title').textContent = group.name;
+      document.getElementById('dash-date-subtitle').textContent = formatUzbekDate(activeDate);
+
+      // Compute KPIs for selected date
+      const total = group.students.length;
+      let present = 0, absent = 0, excused = 0, late = 0;
+
+      group.students.forEach(s => {
+        const status = dayData.records[s.id]?.status || 'present';
+        if (status === 'present') present++;
+        else if (status === 'absent') absent++;
+        else if (status === 'excused') excused++;
+        else if (status === 'late') late++;
+      });
+
+      const presentPct = total > 0 ? Math.round(((present + late) / total) * 100) : 0;
+      const absentPct = total > 0 ? Math.round((absent / total) * 100) : 0;
+
+      // Overall group rate across all students
+      let sumRates = 0;
+      group.students.forEach(s => {
+        sumRates += getStudentStats(group, s.id).rate;
+      });
+      const overallAvgRate = total > 0 ? Math.round(sumRates / total) : 100;
+
+      document.getElementById('kpi-total').textContent = total;
+      document.getElementById('kpi-overall-rate').textContent = `${overallAvgRate}%`;
+      document.getElementById('kpi-present').textContent = present;
+      document.getElementById('kpi-present-pct').textContent = `${presentPct}%`;
+      document.getElementById('kpi-lesson-label').textContent = dayData.lesson || '1-juftlik';
+      document.getElementById('kpi-absent').textContent = absent;
+      document.getElementById('kpi-absent-pct').textContent = `${absentPct}%`;
+      document.getElementById('kpi-absent-note').textContent = absent === 0 ? 'Barcha talabalar darsda!' : `${absent} nafar sababsiz`;
+      document.getElementById('kpi-absent-note').className = absent === 0 ? 'font-medium text-emerald-600' : 'font-medium text-rose-600';
+      document.getElementById('kpi-excused-late').textContent = excused + late;
+      document.getElementById('kpi-excused-late-detail').textContent = `(${excused} sababli, ${late} kechikdi)`;
+
+      renderCharts(group, { present, excused, absent, late });
+      renderAtRiskStudents(group);
+      renderTodayNotes(group, dayData);
+    }
+
+    function renderCharts(group, todayCounts) {
+      // 1. Weekly Bar/Line Chart (Last 6 sorted dates)
+      const sortedDates = Object.keys(group.attendance).sort().slice(-6);
+      const labels = sortedDates.map(d => {
+        const [, m, day] = d.split('-');
+        return `${day}.${m}`;
+      });
+      const rates = sortedDates.map(d => {
+        const recs = group.attendance[d]?.records || {};
+        const total = group.students.length;
+        if (total === 0) return 0;
+        let attended = 0;
+        group.students.forEach(s => {
+          const st = recs[s.id]?.status;
+          if (st === 'present' || st === 'late') attended++;
+        });
+        return Math.round((attended / total) * 100);
+      });
+
+      const weeklyCtx = document.getElementById('weeklyChart').getContext('2d');
+      if (weeklyChartInstance) weeklyChartInstance.destroy();
+
+      weeklyChartInstance = new Chart(weeklyCtx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Davomat ko\'rsatkichi (%)',
+            data: rates,
+            backgroundColor: 'rgba(79, 70, 229, 0.85)',
+            hoverBackgroundColor: '#4338ca',
+            borderRadius: 8,
+            barThickness: 28
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#0f172a',
+              padding: 10,
+              cornerRadius: 10,
+              callbacks: {
+                label: (ctx) => ` Qatnov: ${ctx.parsed.y}%`
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              grid: { color: '#f1f5f9' },
+              ticks: { callback: v => v + '%', font: { size: 11 } }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { font: { size: 11, weight: '600' } }
+            }
+          }
+        }
+      });
+
+      // 2. Doughnut Chart
+      const doughnutCtx = document.getElementById('statusDoughnutChart').getContext('2d');
+      if (doughnutChartInstance) doughnutChartInstance.destroy();
+
+      const dataValues = [todayCounts.present, todayCounts.excused, todayCounts.absent, todayCounts.late];
+      const hasData = dataValues.some(v => v > 0);
+
+      doughnutChartInstance = new Chart(doughnutCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Keldi', 'Sababli', 'Sababsiz', 'Kechikdi'],
+          datasets: [{
+            data: hasData ? dataValues : [1, 0, 0, 0],
+            backgroundColor: ['#10b981', '#f59e0b', '#f43f5e', '#0ea5e9'],
+            borderWidth: 0,
+            hoverOffset: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '70%',
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+
+      // Custom Legend
+      const legendItems = [
+        { label: 'Keldi', count: todayCounts.present, color: 'bg-emerald-500' },
+        { label: 'Sababli', count: todayCounts.excused, color: 'bg-amber-500' },
+        { label: 'Sababsiz', count: todayCounts.absent, color: 'bg-rose-500' },
+        { label: 'Kechikdi', count: todayCounts.late, color: 'bg-sky-500' }
+      ];
+      document.getElementById('doughnut-legend').innerHTML = legendItems.map(item => `
+        <div class="flex items-center justify-between px-2 py-1 rounded-lg bg-slate-50">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-full ${item.color}"></span>
+            <span class="text-slate-600 font-medium">${item.label}</span>
+          </div>
+          <span class="font-bold text-slate-800">${item.count}</span>
+        </div>
+      `).join('');
+    }
+
+    function renderAtRiskStudents(group) {
+      const container = document.getElementById('at-risk-list');
+      const ranked = group.students
+        .map(s => ({ ...s, stats: getStudentStats(group, s.id) }))
+        .filter(s => s.stats.absentCount > 0 || s.stats.rate < 85)
+        .sort((a, b) => b.stats.absentCount - a.stats.absentCount || a.stats.rate - b.stats.rate)
+        .slice(0, 4);
+
+      if (ranked.length === 0) {
+        container.innerHTML = `
+          <div class="p-4 rounded-xl bg-emerald-50/70 border border-emerald-100 text-center text-xs text-emerald-700 font-medium">
+            Ajoyib! Hozircha xavf guruhidagi talabalar mavjud emas.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = ranked.map(s => `
+        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50/80 border border-slate-100 hover:border-slate-200 transition-colors">
+          <div class="min-w-0 pr-3">
+            <div class="text-sm font-semibold text-slate-800 truncate">${s.name}</div>
+            <div class="text-xs text-slate-500">${s.code} • ${s.stats.absentCount} marta sababsiz</div>
+          </div>
+          <span class="shrink-0 px-2.5 py-1 rounded-lg text-xs font-bold ${s.stats.rate < 75 ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}">
+            ${s.stats.rate}%
+          </span>
+        </div>
+      `).join('');
+    }
+
+    function renderTodayNotes(group, dayData) {
+      const container = document.getElementById('today-notes-list');
+      const items = group.students
+        .map(s => ({ student: s, rec: dayData.records[s.id] }))
+        .filter(x => x.rec && (x.rec.status !== 'present' || x.rec.note.trim() !== ''));
+
+      if (items.length === 0) {
+        container.innerHTML = `
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-100 text-center text-xs text-slate-500">
+            Tanlangan kunda barcha talabalar darsda ishtirok etgan va qo'shimcha izohlar yo'q.
+          </div>
+        `;
+        return;
+      }
+
+      const badges = {
+        absent: '<span class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-100 text-rose-700">Sababsiz</span>',
+        excused: '<span class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-700">Sababli</span>',
+        late: '<span class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-sky-100 text-sky-700">Kechikdi</span>',
+        present: '<span class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-700">Keldi</span>'
+      };
+
+      container.innerHTML = items.slice(0, 5).map(({ student, rec }) => `
+        <div class="flex items-start justify-between gap-3 p-3 rounded-xl bg-slate-50/80 border border-slate-100">
+          <div class="min-w-0">
+            <div class="text-sm font-semibold text-slate-800 truncate">${student.name}</div>
+            <div class="text-xs text-slate-500 mt-0.5">${rec.note ? `Izoh: "${rec.note}"` : 'Izoh kiritilmagan'}</div>
+          </div>
+          <div class="shrink-0">${badges[rec.status]}</div>
+        </div>
+      `).join('');
+    }
+
+    // ========================================================================
+    // RENDER ATTENDANCE VIEW (INTERACTIVE TRACKER)
+    // ========================================================================
+    function renderAttendanceView() {
+      const group = getActiveGroup();
+      const dateStr = appState.selectedDate || getDateString(0);
+      const dayData = ensureDayAttendance(group, dateStr);
+      saveState();
+
+      document.getElementById('attendance-date-picker').value = dateStr;
+      document.getElementById('attendance-lesson-input').value = dayData.lesson || '';
+
+      let present = 0, excused = 0, absent = 0, late = 0;
+
+      const tbody = document.getElementById('attendance-table-body');
+      tbody.innerHTML = group.students.map((student, idx) => {
+        const rec = dayData.records[student.id] || { status: 'present', note: '' };
+        if (rec.status === 'present') present++;
+        else if (rec.status === 'excused') excused++;
+        else if (rec.status === 'absent') absent++;
+        else if (rec.status === 'late') late++;
+
+        const btnClass = (targetStatus, activeColors) => {
+          const isActive = rec.status === targetStatus;
+          return isActive
+            ? `${activeColors} shadow-xs font-bold ring-1 ring-inset`
+            : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200/70 font-medium';
+        };
+
+        return `
+          <tr class="hover:bg-slate-50/70 transition-colors">
+            <td class="py-3.5 px-4 text-center font-semibold text-slate-400">${idx + 1}</td>
+            <td class="py-3.5 px-4">
+              <div class="font-semibold text-slate-800">${student.name}</div>
+              <div class="text-xs text-slate-400 font-medium">${student.code}</div>
+            </td>
+            <td class="py-3.5 px-4">
+              <div class="flex flex-wrap items-center gap-1.5">
+                <button onclick="setStudentStatus('${student.id}', 'present')" class="px-3 py-1.5 rounded-lg text-xs transition-all ${btnClass('present', 'bg-emerald-600 text-white ring-emerald-600')}">
+                  Keldi
+                </button>
+                <button onclick="setStudentStatus('${student.id}', 'excused')" class="px-3 py-1.5 rounded-lg text-xs transition-all ${btnClass('excused', 'bg-amber-500 text-white ring-amber-500')}">
+                  Sababli
+                </button>
+                <button onclick="setStudentStatus('${student.id}', 'absent')" class="px-3 py-1.5 rounded-lg text-xs transition-all ${btnClass('absent', 'bg-rose-600 text-white ring-rose-600')}">
+                  Sababsiz
+                </button>
+                <button onclick="setStudentStatus('${student.id}', 'late')" class="px-3 py-1.5 rounded-lg text-xs transition-all ${btnClass('late', 'bg-sky-600 text-white ring-sky-600')}">
+                  Kechikdi
+                </button>
+              </div>
+            </td>
+            <td class="py-3.5 px-4">
+              <input type="text" value="${(rec.note || '').replace(/"/g, '&quot;')}" onchange="setStudentNote('${student.id}', this.value)" placeholder="Sabab yoki izoh..." class="w-full bg-slate-50 border border-slate-200/90 rounded-lg px-3 py-1.5 text-xs text-slate-700 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      const total = group.students.length;
+      const pct = total > 0 ? Math.round(((present + late) / total) * 100) : 0;
+
+      document.getElementById('att-count-present').textContent = present;
+      document.getElementById('att-count-excused').textContent = excused;
+      document.getElementById('att-count-absent').textContent = absent;
+      document.getElementById('att-count-late').textContent = late;
+      document.getElementById('att-live-percentage').textContent = `${pct}%`;
+    }
+
+    function handleAttendanceDateChange(newDate) {
+      if (!newDate) return;
+      appState.selectedDate = newDate;
+      appState.reportDate = newDate;
+      saveState();
+      renderAttendanceView();
+    }
+
+    function handleLessonNameChange(val) {
+      const group = getActiveGroup();
+      const dayData = ensureDayAttendance(group, appState.selectedDate);
+      dayData.lesson = val;
+      queueAttendanceSave(group, appState.selectedDate);
+    }
+
+    function setStudentStatus(studentId, status) {
+      const group = getActiveGroup();
+      const dayData = ensureDayAttendance(group, appState.selectedDate);
+      if (!dayData.records[studentId]) {
+        dayData.records[studentId] = { status, note: '' };
+      } else {
+        dayData.records[studentId].status = status;
+      }
+      queueAttendanceSave(group, appState.selectedDate);
+      renderAttendanceView();
+    }
+
+    function setStudentNote(studentId, note) {
+      const group = getActiveGroup();
+      const dayData = ensureDayAttendance(group, appState.selectedDate);
+      if (!dayData.records[studentId]) {
+        dayData.records[studentId] = { status: 'present', note };
+      } else {
+        dayData.records[studentId].note = note;
+      }
+      queueAttendanceSave(group, appState.selectedDate);
+    }
+
+    function markAllPresent() {
+      const group = getActiveGroup();
+      const dayData = ensureDayAttendance(group, appState.selectedDate);
+      group.students.forEach(s => {
+        dayData.records[s.id] = { status: 'present', note: '' };
+      });
+      queueAttendanceSave(group, appState.selectedDate);
+      renderAttendanceView();
+      showToast('Barcha talabalar "Keldi" deb belgilandi!', 'success');
+    }
+
+    // ========================================================================
+    // STUDENTS MANAGEMENT (LIST, ADD, EDIT, DELETE)
+    // ========================================================================
+    function renderStudentsTable() {
+      const group = getActiveGroup();
+      const searchVal = (document.getElementById('student-tab-search')?.value || '').toLowerCase().trim();
+      const sortMode = document.getElementById('student-sort-select')?.value || 'name';
+
+      let list = group.students.map(s => ({
+        ...s,
+        stats: getStudentStats(group, s.id)
+      }));
+
+      if (searchVal) {
+        list = list.filter(s =>
+          s.name.toLowerCase().includes(searchVal) ||
+          s.code.toLowerCase().includes(searchVal) ||
+          s.phone.toLowerCase().includes(searchVal)
+        );
+      }
+
+      if (sortMode === 'name') {
+        list.sort((a, b) => a.name.localeCompare(b.name));
+      } else if (sortMode === 'rate-desc') {
+        list.sort((a, b) => b.stats.rate - a.stats.rate);
+      } else if (sortMode === 'rate-asc') {
+        list.sort((a, b) => a.stats.rate - b.stats.rate);
+      }
+
+      const tbody = document.getElementById('students-table-body');
+      if (list.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" class="py-8 text-center text-sm text-slate-400">Talabalar topilmadi</td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = list.map((s, idx) => {
+        const rateColor = s.stats.rate >= 90
+          ? 'bg-emerald-500'
+          : s.stats.rate >= 75
+            ? 'bg-amber-500'
+            : 'bg-rose-500';
+
+        return `
+          <tr class="hover:bg-slate-50/80 transition-colors">
+            <td class="py-3.5 px-4 text-center font-semibold text-slate-400">${idx + 1}</td>
+            <td class="py-3.5 px-4 font-semibold text-slate-800">${s.name}</td>
+            <td class="py-3.5 px-4">
+              <span class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-mono text-xs font-semibold">${s.code}</span>
+            </td>
+            <td class="py-3.5 px-4 text-slate-600 text-xs sm:text-sm">${s.phone}</td>
+            <td class="py-3.5 px-4">
+              <div class="flex items-center gap-2.5 max-w-[160px]">
+                <div class="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div class="h-full ${rateColor} rounded-full" style="width: ${s.stats.rate}%"></div>
+                </div>
+                <span class="text-xs font-bold text-slate-700 w-9 text-right">${s.stats.rate}%</span>
+              </div>
+            </td>
+            <td class="py-3.5 px-4 text-right">
+              <div class="inline-flex items-center gap-1">
+                <button onclick="openStudentModal('${s.id}')" title="Tahrirlash" class="p-2 rounded-lg text-slate-500 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                  <i class="ph-bold ph-pencil-simple text-base"></i>
+                </button>
+                <button onclick="deleteStudent('${s.id}')" title="O'chirish" class="p-2 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors">
+                  <i class="ph-bold ph-trash text-base"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openStudentModal(studentId = null) {
+      const modal = document.getElementById('student-modal');
+      const titleEl = document.getElementById('student-modal-title');
+      const idInput = document.getElementById('modal-student-id');
+      const nameInput = document.getElementById('modal-student-name');
+      const codeInput = document.getElementById('modal-student-code');
+      const phoneInput = document.getElementById('modal-student-phone');
+
+      if (studentId) {
+        const group = getActiveGroup();
+        const st = group.students.find(s => s.id === studentId);
+        if (!st) return;
+        titleEl.textContent = 'Talaba ma\'lumotlarini tahrirlash';
+        idInput.value = st.id;
+        nameInput.value = st.name;
+        codeInput.value = st.code;
+        phoneInput.value = st.phone;
+      } else {
+        titleEl.textContent = 'Yangi talaba qo\'shish';
+        idInput.value = '';
+        nameInput.value = '';
+        const nextNum = getActiveGroup().students.length + 1;
+        codeInput.value = `ID-2104${String(nextNum).padStart(2, '0')}`;
+        phoneInput.value = '+998 ';
+      }
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeStudentModal() {
+      const modal = document.getElementById('student-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    async function handleStudentFormSubmit(e) {
+      e.preventDefault();
+      const group = getActiveGroup();
+      const id = document.getElementById('modal-student-id').value;
+      const name = document.getElementById('modal-student-name').value.trim();
+      const code = document.getElementById('modal-student-code').value.trim();
+      const phone = document.getElementById('modal-student-phone').value.trim();
+      const byName = (a, b) => a.name.localeCompare(b.name, 'uz');
+
+      try {
+        if (id) {
+          const { student } = await api(`/api/students/${id}`, { method: 'PUT', body: { name, code, phone } });
+          const idx = group.students.findIndex(s => s.id === id);
+          if (idx !== -1) group.students[idx] = student;
+          showToast('Talaba ma\'lumotlari yangilandi', 'success');
+        } else {
+          const { student } = await api(`/api/groups/${group.id}/students`, { method: 'POST', body: { name, code, phone } });
+          group.students.push(student);
+          const dayData = ensureDayAttendance(group, appState.selectedDate);
+          dayData.records[student.id] = dayData.records[student.id] || { status: 'present', note: '' };
+          showToast('Yangi talaba guruhga qo\'shildi', 'success');
+        }
+        group.students.sort(byName);
+        closeStudentModal();
+        syncHeaderAndSidebar();
+        renderStudentsTable();
+      } catch (err) {
+        showToast(err.message, 'danger');
+      }
+    }
+
+    function deleteStudent(studentId) {
+      const group = getActiveGroup();
+      const st = group.students.find(s => s.id === studentId);
+      if (!st) return;
+
+      openConfirmModal(
+        'Talabani o\'chirish',
+        `Haqiqatan ham "${st.name}"ni guruh ro'yxatidan o'chirmoqchimisiz?`,
+        async () => {
+          try {
+            await api(`/api/students/${studentId}`, { method: 'DELETE' });
+            group.students = group.students.filter(s => s.id !== studentId);
+            Object.keys(group.attendance).forEach(dateKey => {
+              if (group.attendance[dateKey]?.records) {
+                delete group.attendance[dateKey].records[studentId];
+              }
+            });
+            syncHeaderAndSidebar();
+            renderStudentsTable();
+            showToast('Talaba ro\'yxatdan o\'chirildi', 'info');
+          } catch (err) {
+            showToast(err.message, 'danger');
+          }
+        }
+      );
+    }
+
+    // ========================================================================
+    // REPORTS & REAL PDF EXPORT (jsPDF + jsPDF-AutoTable)
+    // ========================================================================
+    function handleReportDateChange(newDate) {
+      if (!newDate) return;
+      appState.reportDate = newDate;
+      saveState();
+      renderReportPreview();
+    }
+
+    function renderReportPreview() {
+      const group = getActiveGroup();
+      const rDate = appState.reportDate || appState.selectedDate || getDateString(0);
+      document.getElementById('report-date-picker').value = rDate;
+
+      const dayData = ensureDayAttendance(group, rDate);
+      saveState();
+
+      document.getElementById('rep-university').textContent = (group.university || 'OLIY TA\'LIM MUASSASASI').toUpperCase();
+      document.getElementById('rep-group-name').textContent = group.name;
+      document.getElementById('rep-faculty').textContent = group.faculty;
+      document.getElementById('rep-date').textContent = `${rDate} (${formatUzbekDate(rDate)})`;
+      document.getElementById('rep-lesson').textContent = dayData.lesson || '1-juftlik';
+      document.getElementById('rep-starosta-name').textContent = group.starosta;
+
+      let present = 0, excused = 0, absent = 0, late = 0;
+
+      const statusLabels = {
+        present: { text: 'Keldi', cls: 'text-emerald-700 bg-emerald-50' },
+        excused: { text: 'Sababli', cls: 'text-amber-700 bg-amber-50' },
+        absent: { text: 'Sababsiz', cls: 'text-rose-700 bg-rose-50 font-bold' },
+        late: { text: 'Kechikdi', cls: 'text-sky-700 bg-sky-50' }
+      };
+
+      const tbody = document.getElementById('report-preview-tbody');
+      tbody.innerHTML = group.students.map((s, idx) => {
+        const rec = dayData.records[s.id] || { status: 'present', note: '' };
+        if (rec.status === 'present') present++;
+        else if (rec.status === 'excused') excused++;
+        else if (rec.status === 'absent') absent++;
+        else if (rec.status === 'late') late++;
+
+        const stInfo = statusLabels[rec.status] || statusLabels.present;
+
+        return `
+          <tr>
+            <td class="py-2 px-3 border-r border-slate-200 text-center text-slate-500">${idx + 1}</td>
+            <td class="py-2 px-3 border-r border-slate-200 font-medium text-slate-800">${s.name}</td>
+            <td class="py-2 px-3 border-r border-slate-200 font-mono text-xs text-slate-600">${s.code}</td>
+            <td class="py-2 px-3 border-r border-slate-200">
+              <span class="px-2 py-0.5 rounded text-xs font-semibold ${stInfo.cls}">${stInfo.text}</span>
+            </td>
+            <td class="py-2 px-3 text-slate-600 text-xs">${rec.note || '—'}</td>
+          </tr>
+        `;
+      }).join('');
+
+      document.getElementById('rep-stat-total').textContent = group.students.length;
+      document.getElementById('rep-stat-present').textContent = present;
+      document.getElementById('rep-stat-excused').textContent = excused;
+      document.getElementById('rep-stat-absent').textContent = absent;
+      document.getElementById('rep-stat-late').textContent = late;
+    }
+
+    function exportCurrentDayPDF() {
+      generatePDFForDate(appState.selectedDate || getDateString(0));
+    }
+
+    function exportReportPDF() {
+      generatePDFForDate(appState.reportDate || appState.selectedDate || getDateString(0));
+    }
+
+    // Core PDF Generator using jsPDF & autoTable
+    function generatePDFForDate(targetDate) {
+      try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const group = getActiveGroup();
+        const dayData = ensureDayAttendance(group, targetDate);
+
+        // Sanitize Uzbek apostrophes (o‘, g‘, ’) for clean Helvetica rendering in standard PDF fonts
+        const cleanStr = (str) => String(str || '')
+          .replace(/[‘’`´]/g, "'")
+          .replace(/[“”]/g, '"');
+
+        // Header Banner
+        doc.setFillColor(30, 41, 59); // Slate-800
+        doc.rect(0, 0, 210, 32, 'F');
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.text('KUNLIK ELEKTRON DAVOMAT QAYDNOMASI', 105, 13, { align: 'center' });
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9.5);
+        doc.setTextColor(203, 213, 225);
+        doc.text(cleanStr(group.university || 'Oliy Ta\'lim Muassasasi'), 105, 20, { align: 'center' });
+        doc.text('Starosta.uz — Elektron Boshqaruv Tizimi', 105, 26, { align: 'center' });
+
+        // Metadata Box
+        doc.setTextColor(15, 23, 42);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Guruh: ${cleanStr(group.name)}`, 14, 42);
+        doc.text(`Sana: ${targetDate}`, 145, 42);
+
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Yo'nalish: ${cleanStr(group.faculty)}`, 14, 48);
+        doc.text(`Starosta: ${cleanStr(group.starosta)}`, 145, 48);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Dars / Fan: ${cleanStr(dayData.lesson || '1-juftlik')}`, 14, 54);
+
+        // Compute summary
+        let present = 0, excused = 0, absent = 0, late = 0;
+        const statusMap = {
+          present: 'Keldi',
+          excused: 'Sababli',
+          absent: 'Sababsiz',
+          late: 'Kechikdi'
+        };
+
+        const tableRows = group.students.map((s, idx) => {
+          const rec = dayData.records[s.id] || { status: 'present', note: '' };
+          if (rec.status === 'present') present++;
+          else if (rec.status === 'excused') excused++;
+          else if (rec.status === 'absent') absent++;
+          else if (rec.status === 'late') late++;
+
+          return [
+            idx + 1,
+            cleanStr(s.name),
+            cleanStr(s.code),
+            statusMap[rec.status] || 'Keldi',
+            cleanStr(rec.note || '-')
+          ];
+        });
+
+        // Summary line
+        doc.setFillColor(241, 245, 249);
+        doc.roundedRect(14, 59, 182, 10, 2, 2, 'F');
+        doc.setFontSize(9.5);
+        doc.setTextColor(30, 41, 59);
+        const summaryText = `Jami: ${group.students.length}   |   Keldi: ${present}   |   Sababli: ${excused}   |   Sababsiz: ${absent}   |   Kechikdi: ${late}`;
+        doc.text(summaryText, 105, 65.5, { align: 'center' });
+
+        // Students Table
+        doc.autoTable({
+          startY: 73,
+          head: [['#', 'Talabaning F.I.Sh.', 'Talaba ID', 'Holati', 'Izoh / Sabab']],
+          body: tableRows,
+          theme: 'grid',
+          headStyles: {
+            fillColor: [79, 70, 229], // Indigo-600
+            textColor: 255,
+            fontStyle: 'bold',
+            fontSize: 9.5
+          },
+          bodyStyles: {
+            fontSize: 9,
+            textColor: [30, 41, 59]
+          },
+          columnStyles: {
+            0: { halign: 'center', cellWidth: 10 },
+            1: { cellWidth: 68 },
+            2: { cellWidth: 28 },
+            3: { cellWidth: 26, fontStyle: 'bold' },
+            4: { cellWidth: 50 }
+          },
+          didParseCell: function (data) {
+            if (data.section === 'body' && data.column.index === 3) {
+              const val = data.cell.raw;
+              if (val === 'Keldi') data.cell.styles.textColor = [5, 150, 105];
+              else if (val === 'Sababsiz') data.cell.styles.textColor = [225, 29, 72];
+              else if (val === 'Sababli') data.cell.styles.textColor = [217, 119, 6];
+              else if (val === 'Kechikdi') data.cell.styles.textColor = [2, 132, 199];
+            }
+          }
+        });
+
+        // Footer Signature
+        const finalY = doc.lastAutoTable.finalY + 14;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        doc.text(`Guruh sardori (Starosta): ${cleanStr(group.starosta)}`, 14, finalY);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Imzo: _______________________', 135, finalY);
+
+        const fileName = `Davomat_${cleanStr(group.name)}_${targetDate}.pdf`;
+        doc.save(fileName);
+        showToast(`PDF hisobot yuklab olindi: ${fileName}`, 'success');
+      } catch (err) {
+        console.error('PDF yaratishda xatolik:', err);
+        showToast('PDF yaratishda xatolik yuz berdi', 'danger');
+      }
+    }
+
+    // ========================================================================
+    // GROUP SETTINGS & NEW GROUP CREATION
+    // ========================================================================
+    function populateSettingsForm() {
+      const group = getActiveGroup();
+      document.getElementById('set-university').value = group.university || '';
+      document.getElementById('set-group-name').value = group.name || '';
+      document.getElementById('set-faculty').value = group.faculty || '';
+      document.getElementById('set-starosta').value = group.starosta || '';
+    }
+
+    async function saveGroupSettings(e) {
+      e.preventDefault();
+      const group = getActiveGroup();
+      const body = {
+        university: document.getElementById('set-university').value.trim(),
+        name: document.getElementById('set-group-name').value.trim(),
+        faculty: document.getElementById('set-faculty').value.trim(),
+        starosta: document.getElementById('set-starosta').value.trim()
+      };
+      try {
+        const { group: updated } = await api(`/api/groups/${group.id}`, { method: 'PUT', body });
+        Object.assign(group, { name: updated.name, faculty: updated.faculty, university: updated.university, starosta: updated.starosta });
+        refreshAllViews();
+        showToast('Guruh sozlamalari muvaffaqiyatli saqlandi!', 'success');
+      } catch (err) {
+        showToast(err.message, 'danger');
+      }
+    }
+
+    function openNewGroupModal() {
+      const modal = document.getElementById('new-group-modal');
+      document.getElementById('new-grp-name').value = '';
+      document.getElementById('new-grp-faculty').value = '';
+      document.getElementById('new-grp-starosta').value = getActiveGroup()?.starosta || currentUser?.name || '';
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeNewGroupModal() {
+      // Birinchi guruh yaratilmaguncha ilovadan foydalanib bo'lmaydi — modal yopilmaydi
+      if (appState.groups.length === 0) {
+        showToast('Davom etish uchun avval birinchi guruhingizni yarating', 'warning');
+        return;
+      }
+      const modal = document.getElementById('new-group-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    async function handleCreateGroup(e) {
+      e.preventDefault();
+      const name = document.getElementById('new-grp-name').value.trim();
+      const faculty = document.getElementById('new-grp-faculty').value.trim();
+      const starosta = document.getElementById('new-grp-starosta').value.trim();
+      const withSample = document.getElementById('new-grp-sample').checked;
+
+      const sampleStudents = [
+        { name: 'Alimov Bobur Shavkatovich', code: 'ID-220101', phone: '+998 90 101 01 01' },
+        { name: 'Karimova Shahnoza Olimovna', code: 'ID-220102', phone: '+998 93 202 02 02' },
+        { name: 'Tursunov Javohir Bekzodovich', code: 'ID-220103', phone: '+998 99 303 03 03' },
+        { name: 'Nazarova Kamola Rustamovna', code: 'ID-220104', phone: '+998 91 404 04 04' },
+        { name: 'Ismoilov Otabek Zafarovich', code: 'ID-220105', phone: '+998 94 505 05 05' },
+        { name: 'Rustamova Malika Timur qizi', code: 'ID-220106', phone: '+998 97 606 06 06' }
+      ];
+
+      try {
+        const { group } = await api('/api/groups', {
+          method: 'POST',
+          body: { name, faculty, starosta, university: getActiveGroup()?.university || '' }
+        });
+        const newGroup = { ...group, students: [], attendance: {} };
+        if (withSample) {
+          const res = await api(`/api/groups/${group.id}/students`, { method: 'POST', body: { students: sampleStudents } });
+          newGroup.students = res.students.sort((a, b) => a.name.localeCompare(b.name, 'uz'));
+        }
+        ensureDayAttendance(newGroup, getDateString(0));
+        appState.groups.push(newGroup);
+        appState.activeGroupId = newGroup.id;
+        saveState();
+
+        closeNewGroupModal();
+        refreshAllViews();
+        showToast(`"${name}" yangi guruhi yaratildi!`, 'success');
+      } catch (err) {
+        showToast(err.message, 'danger');
+      }
+    }
+
+    // Custom Confirm Modal Helpers
+    let pendingConfirmCallback = null;
+    function openConfirmModal(title, message, onConfirm) {
+      document.getElementById('confirm-title').textContent = title;
+      document.getElementById('confirm-message').textContent = message;
+      pendingConfirmCallback = onConfirm;
+      const modal = document.getElementById('confirm-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeConfirmModal() {
+      const modal = document.getElementById('confirm-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      pendingConfirmCallback = null;
+    }
+
+    document.getElementById('confirm-yes-btn').addEventListener('click', () => {
+      if (typeof pendingConfirmCallback === 'function') {
+        pendingConfirmCallback();
+      }
+      closeConfirmModal();
+    });
+
+
+    function refreshAllViews() {
+      syncHeaderAndSidebar();
+      renderDashboard();
+      renderAttendanceView();
+      renderStudentsTable();
+      renderReportPreview();
+      populateSettingsForm();
+    }
+
+    // Initialize Application on Load
+    async function initApp() {
+      showAuthPanel('loading');
+      try {
+        const res = await fetch('/api/auth/current-user', { credentials: 'same-origin' });
+        if (res.status === 401) return showLoginScreen();
+        if (!res.ok) throw new Error('current-user ' + res.status);
+        currentUser = (await res.json()).user;
+        await loadAllData();
+        hideAuthScreen();
+        if (appState.groups.length === 0) {
+          openNewGroupModal(); // yangi foydalanuvchi: birinchi guruhni yaratish
+          return;
+        }
+        refreshAllViews();
+      } catch (e) {
+        console.error(e);
+        showLoginScreen("Serverga ulanib bo'lmadi. Birozdan so'ng qayta urinib ko'ring.");
+      }
+    }
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>
