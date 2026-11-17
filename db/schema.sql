@@ -62,6 +62,16 @@ CREATE INDEX IF NOT EXISTS idx_records_student ON attendance_records(student_id)
 -- ====================== v2: Admin panel + Telegram ======================
 -- (qayta ishga tushirish xavfsiz: npm run db:init)
 
+-- Agar telegram_messages jadvali qo'lda boshqa tuzilishda yaratilgan bo'lsa (session_id ustuni yo'q), o'chirib qayta yaratiladi.
+-- Bu jadvalda faqat yuborilgan xabar identifikatorlari bor, ma'lumot yo'qolmaydi.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = 'telegram_messages')
+     AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'telegram_messages' AND column_name = 'session_id') THEN
+    DROP TABLE telegram_messages;
+  END IF;
+END $$;
+
 -- Admin foydalanuvchini bloklashi mumkin
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN NOT NULL DEFAULT false;
 

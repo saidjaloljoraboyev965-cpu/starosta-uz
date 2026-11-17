@@ -17,6 +17,7 @@ const telegramRoutes = require('./routes/telegram');
 const adminRoutes = require('./routes/admin');
 const adminSession = require('./middleware/adminSession');
 const tgService = require('./services/telegram');
+const migrate = require('./migrate');
 
 for (const key of ['DATABASE_URL', 'SESSION_SECRET', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'BASE_URL']) {
   if (!process.env[key]) {
@@ -92,7 +93,14 @@ app.use((err, _req, res, _next) => {
 });
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`🚀 Starosta.uz: ${process.env.BASE_URL} (port ${port})`);
-  tgService.startPolling();
-});
+migrate()
+  .then(() => {
+    app.listen(port, () => {
+      console.log(`🚀 Starosta.uz: ${process.env.BASE_URL} (port ${port})`);
+      tgService.startPolling();
+    });
+  })
+  .catch((err) => {
+    console.error('❌ Baza sxemasini yangilashda xatolik:', err.message);
+    process.exit(1);
+  });
