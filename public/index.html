@@ -443,6 +443,10 @@
                   <i class="ph-bold ph-checks text-base"></i>
                   <span>Barchasi keldi</span>
                 </button>
+                <button id="tg-send-btn" onclick="sendTelegramReport()" class="px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 disabled:opacity-60 text-white text-xs sm:text-sm font-semibold flex items-center gap-2 shadow-sm shadow-sky-600/20 transition-all active:scale-[0.98]">
+                  <i class="ph-bold ph-paper-plane-tilt text-base"></i>
+                  <span>Telegramga yuborish</span>
+                </button>
                 <button onclick="exportCurrentDayPDF()" class="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs sm:text-sm font-semibold flex items-center gap-2 shadow-sm shadow-brand-600/20 transition-all active:scale-[0.98]">
                   <i class="ph-bold ph-file-pdf text-base"></i>
                   <span>PDF Yuklab olish</span>
@@ -711,6 +715,18 @@
               </div>
             </form>
           </div>
+
+          <!-- TELEGRAM: ustozlarni ulash -->
+          <div class="bg-white rounded-2xl border border-slate-200/70 shadow-sm overflow-hidden mt-6">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+              <i class="ph-fill ph-telegram-logo text-sky-500 text-xl"></i>
+              <div>
+                <h3 class="font-semibold text-slate-900 text-sm">Telegram hisobotlari</h3>
+                <p class="text-xs text-slate-500">Davomat sahifasidagi "Telegramga yuborish" tugmasi hisobotni kanalga va ulangan ustozlarga yuboradi</p>
+              </div>
+            </div>
+            <div id="tg-card-body" class="p-6 text-sm text-slate-600"></div>
+          </div>
         </section>
 
       </main>
@@ -868,7 +884,7 @@
     }
     function showLoginScreen(message) {
       if (!message && new URLSearchParams(location.search).get('auth') === 'failed') {
-        message = "Google orqali kirish muvaffaqiyatsiz tugadi. Qayta urinib ko'ring.";
+        message = "Google orqali kirib bo'lmadi. Qayta urinib ko'ring (hisobingiz bloklangan bo'lishi ham mumkin).";
       }
       showAuthPanel('login', message);
     }
@@ -908,10 +924,12 @@
       const key = group.id + '|' + dateStr;
       const prev = pendingAttendance.get(key);
       if (prev) clearTimeout(prev.timer);
-      const timer = setTimeout(() => flushAttendance(group.id, dateStr), 500);
+      const timer = setTimeout(() => flushAttendance(group.id, dateStr).catch(() => {}), 500);
       pendingAttendance.set(key, { timer, groupId: group.id, dateStr });
     }
     async function flushAttendance(groupId, dateStr, keepalive = false) {
+      const _p = pendingAttendance.get(groupId + '|' + dateStr);
+      if (_p) clearTimeout(_p.timer);
       pendingAttendance.delete(groupId + '|' + dateStr);
       const group = appState.groups.find(g => g.id === groupId);
       const day = group && group.attendance[dateStr];
@@ -926,13 +944,14 @@
         });
       } catch (e) {
         showToast('Davomatni saqlashda xatolik: ' + e.message, 'danger');
+        throw e;
       }
     }
     // Sahifa yopilayotganda kutilayotgan o'zgarishlar yo'qolmasligi uchun
     window.addEventListener('pagehide', () => {
       [...pendingAttendance.values()].forEach(p => {
         clearTimeout(p.timer);
-        flushAttendance(p.groupId, p.dateStr, true);
+        flushAttendance(p.groupId, p.dateStr, true).catch(() => {});
       });
     });
 
@@ -1070,7 +1089,7 @@
       if (tabName === 'attendance') renderAttendanceView();
       if (tabName === 'students') renderStudentsTable();
       if (tabName === 'reports') renderReportPreview();
-      if (tabName === 'settings') populateSettingsForm();
+      if (tabName === 'settings') { populateSettingsForm(); loadTelegramCard(); }
     }
 
     // Global Header & Group Info Synchronization
@@ -1951,6 +1970,111 @@
       renderStudentsTable();
       renderReportPreview();
       populateSettingsForm();
+    }
+
+
+    // ========================================================================
+    // TELEGRAM
+    // ========================================================================
+    function esc(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    async function sendTelegramReport() {
+      const group = getActiveGroup();
+      const date = appState.selectedDate;
+      const btn = document.getElementById('tg-send-btn');
+      btn.disabled = true;
+      try {
+        ensureDayAttendance(group, date);
+        await flushAttendance(group.id, date);              // avval davomatni serverga saqlaymiz
+        const { results } = await api(`/api/groups/${group.id}/telegram/send`, { method: 'POST', body: { date } });
+        const ok = results.filter(r => r.ok);
+        const bad = results.filter(r => !r.ok);
+        if (bad.length === 0) {
+          const edited = ok.every(r => r.action === 'edited' || r.action === 'unchanged');
+          showToast(`${edited ? 'Hisobot yangilandi' : 'Hisobot yuborildi'}: ${ok.length} ta manzil`, 'success');
+        } else {
+          showToast(`${ok.length} ta yuborildi, ${bad.length} ta xato: ${bad.map(b => b.label + ' — ' + b.error).join('; ')}`, 'warning');
+        }
+      } catch (e) {
+        showToast(e.message, 'danger');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function loadTelegramCard() {
+      const box = document.getElementById('tg-card-body');
+      const group = getActiveGroup();
+      if (!box || !group) return;
+      box.innerHTML = '<span class="text-slate-400">Yuklanmoqda...</span>';
+      try {
+        renderTelegramCard(await api(`/api/groups/${group.id}/telegram`));
+      } catch (e) {
+        box.innerHTML = `<span class="text-rose-600">${esc(e.message)}</span>`;
+      }
+    }
+
+    function renderTelegramCard(t) {
+      const box = document.getElementById('tg-card-body');
+      if (!t.enabled) {
+        box.innerHTML = '<p class="text-amber-700">Telegram bot serverda hali sozlanmagan. Administrator <code>TELEGRAM_BOT_TOKEN</code> ni kiritishi kerak.</p>';
+        return;
+      }
+      const teachers = t.teachers.length
+        ? `<ul class="divide-y divide-slate-100 border border-slate-200 rounded-xl">${t.teachers.map(x => `
+            <li class="flex items-center justify-between px-3 py-2">
+              <span class="font-medium text-slate-800"><i class="ph ph-user text-sky-500"></i> ${esc(x.name || 'Ustoz')}</span>
+              <button onclick="removeTeacher('${esc(x.id)}')" class="text-xs font-semibold text-rose-600 hover:underline">Uzish</button>
+            </li>`).join('')}</ul>`
+        : '<p class="text-slate-400">Hali hech qaysi ustoz ulanmagan.</p>';
+      box.innerHTML = `
+        <div class="space-y-5">
+          <div class="flex items-center gap-2 text-xs ${t.channelConfigured ? 'text-emerald-600' : 'text-amber-700'}">
+            <i class="ph-fill ${t.channelConfigured ? 'ph-check-circle' : 'ph-warning'} text-base"></i>
+            ${t.channelConfigured ? 'Hisobotlar Telegram kanaliga yuboriladi' : 'Kanal sozlanmagan — hisobot faqat ulangan ustozlarga boradi (kanalni administrator sozlaydi)'}
+          </div>
+          <div>
+            <h4 class="font-semibold text-slate-800 mb-1">Ustozni ulash</h4>
+            <p class="text-xs text-slate-500 mb-2">Havolani ustozga yuboring. Ustoz uni ochib, botda <b>Start</b> tugmasini bosadi — shundan so'ng hisobotlar uning Telegramiga keladi.</p>
+            ${t.deepLink ? `
+            <div class="flex flex-wrap gap-2">
+              <input id="tg-link" readonly value="${esc(t.deepLink)}" class="flex-1 min-w-56 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700" />
+              <button onclick="copyTelegramLink()" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700">Nusxalash</button>
+              <a href="${esc(t.deepLink)}" target="_blank" rel="noopener" class="px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold">Telegramda ochish</a>
+              <button onclick="regenerateTeacherCode()" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700" title="Eski havola ishlamay qoladi">Yangi havola</button>
+            </div>` : '<p class="text-rose-600 text-xs">Bot ma\'lumotini olib bo\'lmadi. Keyinroq urinib ko\'ring.</p>'}
+          </div>
+          <div>
+            <h4 class="font-semibold text-slate-800 mb-2">Ulangan ustozlar</h4>
+            ${teachers}
+          </div>
+        </div>`;
+    }
+
+    function copyTelegramLink() {
+      const el = document.getElementById('tg-link');
+      el.select();
+      (navigator.clipboard ? navigator.clipboard.writeText(el.value) : Promise.resolve(document.execCommand('copy')))
+        .then(() => showToast('Havola nusxalandi', 'success'));
+    }
+
+    async function regenerateTeacherCode() {
+      const group = getActiveGroup();
+      try {
+        renderTelegramCard(await api(`/api/groups/${group.id}/telegram/regenerate-code`, { method: 'POST' }));
+        showToast('Yangi havola yaratildi. Eskisi endi ishlamaydi.', 'info');
+      } catch (e) { showToast(e.message, 'danger'); }
+    }
+
+    async function removeTeacher(id) {
+      const group = getActiveGroup();
+      try {
+        await api(`/api/groups/${group.id}/telegram/teachers/${id}`, { method: 'DELETE' });
+        showToast('Ustoz uzildi', 'info');
+        loadTelegramCard();
+      } catch (e) { showToast(e.message, 'danger'); }
     }
 
     // Initialize Application on Load

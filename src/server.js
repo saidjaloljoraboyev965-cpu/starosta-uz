@@ -13,6 +13,10 @@ const authRoutes = require('./routes/auth');
 const groupRoutes = require('./routes/groups');
 const { groupStudents, students } = require('./routes/students');
 const attendanceRoutes = require('./routes/attendance');
+const telegramRoutes = require('./routes/telegram');
+const adminRoutes = require('./routes/admin');
+const adminSession = require('./middleware/adminSession');
+const tgService = require('./services/telegram');
 
 for (const key of ['DATABASE_URL', 'SESSION_SECRET', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'BASE_URL']) {
   if (!process.env[key]) {
@@ -31,6 +35,12 @@ if (isProd) app.set('trust proxy', 1);
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.json({ limit: '1mb' }));
 
+// Admin API: alohida sessiya (starosta sessiyasidan oldin ulanadi)
+if (!process.env.ADMIN_USERNAME || !process.env.ADMIN_PASSWORD_HASH) {
+  console.warn("⚠️  ADMIN_USERNAME / ADMIN_PASSWORD_HASH sozlanmagan — admin panelga kirib bo'lmaydi (npm run admin:hash)");
+}
+app.use('/api/admin', adminSession, adminRoutes);
+
 app.use(
   session({
     store: new PgStore({ pool, createTableIfMissing: true }),
@@ -48,6 +58,15 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Qurilma "oxirgi faollik" vaqtini yangilash (daqiqasiga 1 martadan ko'p emas)
+app.use('/api', (req, _res, next) => {
+  if (req.isAuthenticated() && req.session) {
+    const d = (req.session.device = req.session.device || { loginAt: Date.now(), ua: String(req.get('user-agent') || '').slice(0, 300) });
+    if (!d.lastSeen || Date.now() - d.lastSeen > 60 * 1000) { d.lastSeen = Date.now(); d.ip = req.ip; }
+  }
+  next();
+});
+
 // Umumiy cheklov + login uchun qattiqroq cheklov
 app.use('/api', rateLimit({ windowMs: 60 * 1000, limit: 300, standardHeaders: true, legacyHeaders: false }));
 app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, limit: 60, standardHeaders: true, legacyHeaders: false }));
@@ -55,12 +74,14 @@ app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, limit: 60, standardHe
 // API
 app.use('/api/auth', authRoutes);
 app.use('/api/groups/:groupId/students', requireAuth, groupStudents);
+app.use('/api/groups/:groupId/telegram', requireAuth, telegramRoutes);
 app.use('/api/groups', requireAuth, groupRoutes);
 app.use('/api/students', requireAuth, students);
 app.use('/api/attendance', requireAuth, attendanceRoutes);
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Endpoint topilmadi' }));
 
 // Frontend
+app.get('/admin', (_req, res) => res.sendFile(path.join(__dirname, '../public/admin.html')));
 app.use(express.static(path.join(__dirname, '../public')));
 
 // Xatoliklar
@@ -71,4 +92,7 @@ app.use((err, _req, res, _next) => {
 });
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`🚀 Starosta.uz: ${process.env.BASE_URL} (port ${port})`));
+app.listen(port, () => {
+  console.log(`🚀 Starosta.uz: ${process.env.BASE_URL} (port ${port})`);
+  tgService.startPolling();
+});

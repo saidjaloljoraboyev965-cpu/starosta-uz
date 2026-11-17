@@ -13,7 +13,16 @@ router.get(
 router.get(
   '/google/callback',
   passport.authenticate('google', { failureRedirect: '/?auth=failed' }),
-  (req, res) => res.redirect('/')
+  (req, res) => {
+    // Admin panelda "ulangan qurilmalar" ko'rsatish uchun
+    req.session.device = {
+      ip: req.ip,
+      ua: String(req.get('user-agent') || '').slice(0, 300),
+      loginAt: Date.now(),
+      lastSeen: Date.now(),
+    };
+    res.redirect('/');
+  }
 );
 
 // 3) Joriy foydalanuvchi

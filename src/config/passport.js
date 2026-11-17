@@ -24,9 +24,10 @@ passport.use(
                  full_name = EXCLUDED.full_name,
                  avatar_url = EXCLUDED.avatar_url,
                  last_login_at = now()
-           RETURNING id, email, full_name, avatar_url`,
+           RETURNING id, email, full_name, avatar_url, is_blocked`,
           [profile.id, email, fullName, avatar]
         );
+        if (rows[0].is_blocked) return done(null, false); // bloklangan
         done(null, rows[0]);
       } catch (err) {
         done(err);
@@ -41,7 +42,7 @@ passport.serializeUser((user, done) => done(null, user.id));
 passport.deserializeUser(async (id, done) => {
   try {
     const { rows } = await pool.query(
-      'SELECT id, email, full_name, avatar_url FROM users WHERE id = $1',
+      'SELECT id, email, full_name, avatar_url FROM users WHERE id = $1 AND NOT is_blocked',
       [id]
     );
     done(null, rows[0] || false);

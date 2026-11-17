@@ -15,8 +15,10 @@ starosta-uz/
 │   ├── db.js                  # pg Pool
 │   ├── config/passport.js     # Google OAuth 2.0 strategiyasi
 │   ├── middleware/auth.js     # requireAuth, guruh egaligini tekshirish, validatsiya
-│   └── routes/                # auth, groups, students, attendance
-├── public/index.html          # sizning frontend'ingiz (API bilan ishlaydigan qilib o'zgartirilgan)
+│   ├── routes/                # auth, groups, students, attendance, telegram, admin
+│   └── services/telegram.js   # bot: hisobot yuborish + ustozni ulash
+├── public/index.html          # starosta interfeysi (API bilan ishlaydi)
+├── public/admin.html          # admin panel (/admin)
 ├── .env.example
 └── package.json
 ```
@@ -131,3 +133,81 @@ Sessiya boshqaruvi: server `express-session` + `connect-pg-simple` (sessiyalar P
 - **XSS:** frontend talaba ismlarini `innerHTML` orqali chiqaradi. Ma'lumotlar faqat egasiga ko'rinadi, lekin
   keyinchalik ma'lumot almashish qo'shilsa, `escapeHtml()` yordamchisini qo'shing.
 - Keyingi qadamlar: guruhni bir necha starosta o'rtasida ulashish (`group_members` jadvali), CSV import, Telegram bildirishnomalari.
+
+
+---
+
+# v2: Admin panel va Telegram bot
+
+## Yangilash (avvalgi versiyadan)
+```bash
+# 1) yangi fayllarni joylang, so'ng:
+npm run db:init                        # yangi jadval/ustunlarni qo'shadi (mavjud ma'lumotga tegmaydi)
+npm run admin:hash -- "kuchli-parol"   # chiqqan ADMIN_PASSWORD_HASH=... qatorini .env ga ko'chiring
+```
+`.env` ga qo'shing (namuna `.env.example` da):
+```
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD_HASH=scrypt:...
+TELEGRAM_BOT_TOKEN=123456:ABC...
+TELEGRAM_CHANNEL_ID=@kanal_nomi        # yoki -100xxxxxxxxxx
+APP_TIMEZONE=Asia/Tashkent
+```
+Yangi npm paketlar kerak emas (Node 18+ ning o'zida `fetch` bor). Serverni qayta ishga tushiring.
+
+## Admin panel — `http://localhost:3000/admin`
+Bitta admin, login + parol (`.env` dagi `ADMIN_USERNAME` va parol hashi). Parol hech qayerda ochiq saqlanmaydi (scrypt).
+
+| Bo'lim | Nimalar bor |
+|---|---|
+| **Statistika** | foydalanuvchi/guruh/talaba soni, hozir onlayn, bugun davomat olgan guruhlar, bugungi davomat %, oxirgi 14 kun grafigi, holatlar diagrammasi, yangi foydalanuvchilar (30 kun), eng ko'p kelmaydigan guruhlar, Telegram yuborish natijalari |
+| **Qurilmalar** | har bir faol sessiya: foydalanuvchi, qurilma turi (telefon/planshet/kompyuter), OT, brauzer, IP, kirgan va oxirgi faollik vaqti, onlayn/oflayn. **"Uzish"** — qurilmani tizimdan chiqarib yuboradi |
+| **Foydalanuvchilar** | ro'yxat, **bloklash** (barcha qurilmalardan chiqaradi va qayta kirishga yo'l qo'ymaydi), **o'chirish** (barcha ma'lumoti bilan) |
+| **Guruhlar** | barcha guruhlar, egasi, davomat %, oxirgi davomat sanasi, ustozlar soni, guruh uchun alohida Telegram kanal belgilash |
+| **Telegram** | bot va kanal holati (bot kanalda admin ekanini tekshiradi), test xabar yuborish, so'nggi 50 ta yuborish jurnali |
+
+Xavfsizlik: admin sessiyasi starosta sessiyasidan **alohida** (`admin.sid` cookie, `admin_session` jadvali, 8 soat,
+`SameSite=Strict`), kirishga 15 daqiqada 10 urinish limiti, noto'g'ri urinishda kechikish. Admin sahifasida
+barcha foydalanuvchi matnlari HTML-escape qilinadi.
+
+"Qurilmalar" ma'lumoti sessiya yozuvidan olinadi: Google orqali kirishda IP va User-Agent saqlanadi, har so'rovda
+(daqiqasiga bir martadan ko'p emas) "oxirgi faollik" yangilanadi. "Onlayn" = oxirgi 5 daqiqada faol.
+Bu **v2 dan keyin** kirgan sessiyalar uchun to'liq ko'rinadi; eskilari bir marta so'rov yuborgach paydo bo'ladi.
+
+## Telegram bot
+
+### Sozlash
+1. **@BotFather** → `/newbot` → tokenni `TELEGRAM_BOT_TOKEN` ga yozing.
+2. Kanal yarating → **Administratorlar** → botni qo'shing, **"Xabar yuborish"** (Post messages) huquqini bering.
+3. Kanal ID sini `TELEGRAM_CHANNEL_ID` ga yozing (ommaviy kanal: `@nom`; yopiq kanal: `-100…` ID — uni olish uchun
+   kanaldan biror xabarni @userinfobot ga forward qiling).
+4. Admin panel → **Telegram** → "Test xabar yuborish" bilan tekshiring (bot kanalda admin ekani ko'rsatiladi).
+
+### Qanday ishlaydi
+- Starosta **Davomat** sahifasida davomatni belgilab, **"Telegramga yuborish"** tugmasini bosadi.
+  Avval davomat serverga saqlanadi, so'ng hisobot **kanalga** va guruhga ulangan **barcha ustozlarga** yuboriladi.
+- Hisobot: guruh, sana, dars, starosta, Keldi/Kechikdi/Sababli/Kelmadi soni, davomat %, hamda kelmagan,
+  kechikkan va sababli talabalar ro'yxati (izohlari bilan).
+- Xuddi shu kun uchun qayta bosilsa, yangi xabar yozilmaydi — **avvalgi xabar tahrirlanadi** (kanal to'lib ketmaydi).
+- **Ustozni ulash:** starosta *Sozlamalar → Telegram hisobotlari* bo'limidan havola oladi
+  (`https://t.me/<bot>?start=<kod>`). Ustoz havolani ochib **Start** bosadi — bot uni guruhga bog'laydi.
+  Ustoz `/stop` yuborib o'zi chiqib ketishi mumkin; starosta ham "Uzish" tugmasi bilan olib tashlaydi.
+  Havola tarqalib ketsa — "Yangi havola" eskisini bekor qiladi.
+- Telegram qoidasi: bot odamga faqat u botga birinchi yozgandan (Start) keyin xabar yubora oladi, shuning uchun
+  ustozni raqamidan emas, aynan shu havola orqali ulash kerak.
+- Bot yangilanishlarni *long polling* orqali oladi, shuning uchun lokalda ham, HTTPS/webhook sozlamasdan ham ishlaydi.
+  **Bitta bot tokenini faqat bitta server nusxasi** ishlatishi kerak (ikkinchisi `409 Conflict` beradi).
+
+### Yangi API
+| Metod | Yo'l | Kim |
+|---|---|---|
+| GET | `/api/groups/:id/telegram` | starosta — ulanish havolasi, ustozlar, kanal holati |
+| POST | `/api/groups/:id/telegram/send` `{date}` | starosta — hisobotni yuborish |
+| POST | `/api/groups/:id/telegram/regenerate-code` | starosta — yangi havola |
+| DELETE | `/api/groups/:id/telegram/teachers/:tid` | starosta — ustozni uzish |
+| POST/GET | `/api/admin/login`, `/logout`, `/me` | admin |
+| GET | `/api/admin/stats`, `/devices`, `/users`, `/groups`, `/telegram`, `/telegram/log` | admin |
+| DELETE | `/api/admin/devices/:sid` | admin — qurilmani uzish |
+| PATCH/DELETE | `/api/admin/users/:id` | admin — bloklash / o'chirish |
+| PUT | `/api/admin/groups/:id/telegram` `{channel_id}` | admin — guruh kanalini belgilash |
+| POST | `/api/admin/telegram/test` | admin — test xabar |
