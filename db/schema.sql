@@ -108,3 +108,12 @@ CREATE TABLE IF NOT EXISTS telegram_log (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_tglog_created ON telegram_log(created_at DESC);
+
+-- Admin panel sessiyalari (connect-pg-simple formatida, o'z PK nomi bilan)
+CREATE TABLE IF NOT EXISTS admin_session (
+  sid    VARCHAR NOT NULL COLLATE "default",
+  sess   JSON NOT NULL,
+  expire TIMESTAMP(6) NOT NULL,
+  CONSTRAINT admin_session_pkey PRIMARY KEY (sid)
+);
+CREATE INDEX IF NOT EXISTS idx_admin_session_expire ON admin_session(expire);

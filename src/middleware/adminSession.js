@@ -5,7 +5,8 @@ const pool = require('../db');
 // Admin sessiyasi starosta sessiyasidan butunlay alohida: boshqa cookie, boshqa jadval, qisqa muddat
 module.exports = session({
   name: 'admin.sid',
-  store: new PgStore({ pool, tableName: 'admin_session', createTableIfMissing: true }),
+  // Jadval db/schema.sql da yaratiladi (kutubxona ikkinchi jadval uchun ham 'session_pkey' nomini ishlatib, xato beradi)
+  store: new PgStore({ pool, tableName: 'admin_session' }),
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,

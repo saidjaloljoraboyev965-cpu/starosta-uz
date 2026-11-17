@@ -192,6 +192,10 @@ async function handleMessage(msg) {
 let polling = false;
 async function startPolling() {
   if (!TOKEN || polling) return;
+  if (process.env.TELEGRAM_POLLING === 'false') {
+    console.log('ℹ️  Telegram polling o\'chirilgan (TELEGRAM_POLLING=false)');
+    return;
+  }
   polling = true;
   try {
     await tg('deleteWebhook', { drop_pending_updates: false });
